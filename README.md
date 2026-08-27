@@ -6,25 +6,25 @@ A [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) (DSH)
 plugin that keeps every conversation and log **inside the workspace folder**, so
 the folder becomes a self-contained, portable archive.
 
-When `dsh-vault` is installed, each workspace folder gains a hidden
-`.dsh-vault/` directory:
+When `dsh-vault` is installed, each workspace folder gains a
+`dsh-vault/` directory:
 
 ```
 my-project/
-  .dsh-vault/
+  dsh-vault/
     workspace.json          # the workspace title (name)
     sessions/
       <session-id>.jsonl    # one append-only conversation log per session
 ```
 
 - Every session whose `cwd` is the workspace is mirrored into
-  `.dsh-vault/sessions/` as it happens.
-- The workspace title is cached in `.dsh-vault/workspace.json`.
+  `dsh-vault/sessions/` as it happens.
+- The workspace title is cached in `dsh-vault/workspace.json`.
 
 ## Why this works on a new computer
 
-1. Copy the workspace folder (the whole directory, including the hidden
-   `.dsh-vault/`) to the new computer.
+1. Copy the workspace folder (the whole directory, including the
+   `dsh-vault/`) to the new computer.
 2. Install DSH and this plugin there.
 3. Open the copied folder as a workspace.
 
@@ -88,7 +88,7 @@ provides visibility and manual control:
 ### How it behaves
 
 - **Continuous mirroring.** As a session appends events, they are written to
-  the workspace's `.dsh-vault/sessions/<id>.jsonl` in order. On session
+  the workspace's `dsh-vault/sessions/<id>.jsonl` in order. On session
   disposal the file is rewritten as a clean snapshot.
 - **Automatic restore.** At boot, and whenever a workspace is opened, the
   plugin imports any vault session missing from DSH persistence and applies the
@@ -103,7 +103,7 @@ provides visibility and manual control:
 ## Configuration
 
 No configuration is required. The plugin inserts with an empty `config`; the
-vault directory name (`.dsh-vault`) and the JSONL format are fixed so vaults
+vault directory name (`dsh-vault`) and the JSONL format are fixed so vaults
 stay interchangeable across machines.
 
 ## Development
