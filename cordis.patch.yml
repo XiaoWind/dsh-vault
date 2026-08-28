@@ -4,7 +4,7 @@
 # file inserts one entry (this package itself) into the booted profile's
 # composition. The entry is a Cordis function plugin (lib/index.js) that
 # mirrors every session log and the workspace title into a portable
-# `dsh-vault/` directory inside the workspace folder, and restores them when
+# `dsh-session-vault/` directory inside the workspace folder, and restores them when
 # a workspace carrying a vault is opened.
 #
 # The plugin injects `sessionPersistence`, `workspaceRegistry`, and `commands`,

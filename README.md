@@ -7,24 +7,24 @@ plugin that keeps every conversation and log **inside the workspace folder**, so
 the folder becomes a self-contained, portable archive.
 
 When `dsh-vault` is installed, each workspace folder gains a
-`dsh-vault/` directory:
+`dsh-session-vault/` directory:
 
 ```
 my-project/
-  dsh-vault/
-    workspace.json          # the workspace title (name)
+  dsh-session-vault/
+    workspace.json          # the workspace title (name) + a vault marker
     sessions/
       <session-id>.jsonl    # one append-only conversation log per session
 ```
 
 - Every session whose `cwd` is the workspace is mirrored into
-  `dsh-vault/sessions/` as it happens.
-- The workspace title is cached in `dsh-vault/workspace.json`.
+  `dsh-session-vault/sessions/` as it happens.
+- The workspace title is cached in `dsh-session-vault/workspace.json`.
 
 ## Why this works on a new computer
 
 1. Copy the workspace folder (the whole directory, including the
-   `dsh-vault/`) to the new computer.
+   `dsh-session-vault/`) to the new computer.
 2. Install DSH and this plugin there.
 3. Open the copied folder as a workspace.
 
@@ -88,7 +88,7 @@ provides visibility and manual control:
 ### How it behaves
 
 - **Continuous mirroring.** As a session appends events, they are written to
-  the workspace's `dsh-vault/sessions/<id>.jsonl` in order. On session
+  the workspace's `dsh-session-vault/sessions/<id>.jsonl` in order. On session
   disposal the file is rewritten as a clean snapshot.
 - **Automatic restore.** At boot, and whenever a workspace is opened, the
   plugin imports any vault session missing from DSH persistence and applies the
@@ -103,8 +103,12 @@ provides visibility and manual control:
 ## Configuration
 
 No configuration is required. The plugin inserts with an empty `config`; the
-vault directory name (`dsh-vault`) and the JSONL format are fixed so vaults
-stay interchangeable across machines.
+vault directory name (`dsh-session-vault`) and the JSONL format are fixed so
+vaults stay interchangeable across machines.
+
+Each vault's `workspace.json` also carries a `kind: "dsh-vault"` marker, so the
+plugin recognizes a vault by its content rather than relying on the directory
+name alone.
 
 ## Development
 

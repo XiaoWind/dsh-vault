@@ -111,6 +111,7 @@ test("writeWorkspaceMeta/readWorkspaceMeta round-trip and onlyIfMissing", async 
   try {
     await writeWorkspaceMeta(dir, "My Project");
     assert.equal((await readWorkspaceMeta(dir)).title, "My Project");
+    assert.equal((await readWorkspaceMeta(dir)).kind, "dsh-vault");
 
     await writeWorkspaceMeta(dir, "Overwritten", { onlyIfMissing: true });
     assert.equal((await readWorkspaceMeta(dir)).title, "My Project");

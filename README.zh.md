@@ -6,23 +6,23 @@
 插件，把**所有对话和日志保存在工作区文件夹内部**，让工作区文件夹成为自包含、
 可移植的存档。
 
-安装 `dsh-vault` 后，每个工作区文件夹里会出现一个 `dsh-vault/` 目录：
+安装 `dsh-vault` 后，每个工作区文件夹里会出现一个 `dsh-session-vault/` 目录：
 
 ```
 my-project/
-  dsh-vault/
-    workspace.json          # 工作区名称（标题）
+  dsh-session-vault/
+    workspace.json          # 工作区名称（标题）+ 保险库标记
     sessions/
       <session-id>.jsonl    # 每个会话一个追加式对话日志
 ```
 
 - 每个 `cwd` 指向该工作区的会话都会在发生时被实时镜像到
-  `dsh-vault/sessions/`。
-- 工作区标题被缓存在 `dsh-vault/workspace.json` 里。
+  `dsh-session-vault/sessions/`。
+- 工作区标题被缓存在 `dsh-session-vault/workspace.json` 里。
 
 ## 为什么这样就能在新电脑上恢复
 
-1. 把工作区文件夹（整个目录，包括 `dsh-vault/`）复制到新电脑。
+1. 把工作区文件夹（整个目录，包括 `dsh-session-vault/`）复制到新电脑。
 2. 在新电脑上安装 DSH 和本插件。
 3. 把复制的文件夹作为工作区打开。
 
@@ -80,7 +80,7 @@ dsh plugin --profile web add github:XiaoWind/dsh-vault
 ### 行为说明
 
 - **持续镜像。** 会话每追加事件，就按顺序写入该工作区的
-  `dsh-vault/sessions/<id>.jsonl`；会话销毁时会把文件重写为一份干净快照。
+  `dsh-session-vault/sessions/<id>.jsonl`；会话销毁时会把文件重写为一份干净快照。
 - **自动恢复。** 启动时、以及每次打开工作区时，插件都会导入 DSH 持久化中缺失
   的保险库会话，并应用保险库里的标题。在全新电脑上把复制的文件夹作为工作区打开，
   同样会触发恢复。
@@ -91,8 +91,11 @@ dsh plugin --profile web add github:XiaoWind/dsh-vault
 
 ## 配置
 
-无需配置。插件以空 `config` 插入；保险库目录名（`dsh-vault`）和 JSONL 格式是
-固定的，以保证不同机器之间的保险库可以互换。
+无需配置。插件以空 `config` 插入；保险库目录名（`dsh-session-vault`）和 JSONL
+格式是固定的，以保证不同机器之间的保险库可以互换。
+
+每个保险库的 `workspace.json` 还带有 `kind: "dsh-vault"` 标记，因此插件按内容
+识别保险库，而不只依赖目录名。
 
 ## 开发
 
