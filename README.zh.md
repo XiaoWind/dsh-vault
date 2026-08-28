@@ -103,9 +103,6 @@ dsh plugin --profile web add github:XiaoWind/dsh-vault
 # 语法检查
 node --check lib/index.js
 node --check lib/vault.js
-
-# 格式/解析单元测试（直接进程内运行，避免在沙箱下 spawn）
-node test/vault.test.mjs
 ```
 
 插件是无第三方依赖的 ESM（`lib/index.js` + `lib/vault.js`），无需构建步骤。它导出

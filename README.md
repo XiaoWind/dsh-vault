@@ -116,9 +116,6 @@ name alone.
 # syntax check
 node --check lib/index.js
 node --check lib/vault.js
-
-# format/parse unit tests (run in-process to avoid spawning under a sandbox)
-node test/vault.test.mjs
 ```
 
 The plugin is dependency-free ESM (`lib/index.js` + `lib/vault.js`) with no
