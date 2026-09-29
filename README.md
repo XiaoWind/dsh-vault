@@ -1,128 +1,139 @@
 # dsh-vault
 
-English | [中文](README.zh.md)
+中文 | [English](README.en.md)
 
-A [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) (DSH)
-plugin that keeps every conversation and log **inside the workspace folder**, so
-the folder becomes a self-contained, portable archive.
+一个 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness)（DSH）
+插件，把**所有对话和日志保存在工作区文件夹内部**，让工作区文件夹成为自包含、
+可移植的存档。
 
-When `dsh-vault` is installed, each workspace folder gains a
-`dsh-session-vault/` directory:
+安装 `dsh-vault` 后，每个工作区文件夹里会出现一个 `dsh-session-vault/` 目录：
 
 ```
 my-project/
   dsh-session-vault/
-    workspace.json          # the workspace title (name) + a vault marker
+    workspace.json          # 工作区名称（标题）+ 保险库标记
     sessions/
-      <session-id>.jsonl    # one append-only conversation log per session
+      <session-id>.jsonl    # 每个会话一个追加式对话日志
 ```
 
-- Every session whose `cwd` is the workspace is mirrored into
-  `dsh-session-vault/sessions/` as it happens.
-- The workspace title is cached in `dsh-session-vault/workspace.json`.
+- 每个 `cwd` 指向该工作区的会话都会在发生时被实时镜像到
+  `dsh-session-vault/sessions/`。
+- 工作区标题被缓存在 `dsh-session-vault/workspace.json` 里。
 
-## Why this works on a new computer
+## 为什么这样就能在新电脑上恢复
 
-1. Copy the workspace folder (the whole directory, including the
-   `dsh-session-vault/`) to the new computer.
-2. Install DSH and this plugin there.
-3. Open the copied folder as a workspace.
+1. 把工作区文件夹（整个目录，包括 `dsh-session-vault/`）复制到新电脑。
+2. 在新电脑上安装 DSH 和本插件。
+3. 把复制的文件夹作为工作区打开。
 
-On open, `dsh-vault` imports every session from the vault back into DSH
-persistence (rebinding each session's `cwd` to the folder's current location),
-and restores the workspace name from `workspace.json`. All conversations —
-including the workspace title — come back.
+打开时，`dsh-vault` 会把保险库里的每个会话导入回 DSH 持久化（并把每个会话的
+`cwd` 重新绑定到文件夹当前所在位置），同时从 `workspace.json` 恢复工作区名称。
+所有对话——包括工作区名称——都会回来。
 
-## Install
+## 安装
+
+### DeepSeek Harness 桌面版
+
+在桌面版的**插件管理**里添加插件时，填 GitHub 规格（注意不是包名）：
+
+```
+github:XiaoWind/dsh-vault
+```
+
+桌面版会在 profile 目录里执行 `pnpm add github:XiaoWind/dsh-vault`，从 GitHub
+拉取默认分支的最新 commit，校验通过后把本包加入 `dsh.profile.bundles`。
+**安装后按提示重启桌面应用**才会生效。
+
+> **必须使用 `github:owner/repo` 这种规格。** 本插件没有发布到 npm registry，
+> 只写 `dsh-vault` 会去 npm 上查找，安装会失败。
+
+> 桌面版在安装时会逐条校验本插件 `peerDependencies` 里的 `@deepseek-ai/dsh-*`
+> 范围是否接受当前运行时版本（即 `dsh-app-boot` 的版本，例如 `0.2.0-rc.2`）。
+> 不兼容时会拒绝安装，并回滚 `package.json`、`pnpm-lock.yaml` 和
+> `node_modules`；遇到这种情况请更新到最新版插件。
+
+### CLI / Web 版
 
 ```sh
-# from GitHub (works immediately — no npm publish required)
-dsh plugin --profile web add git+https://github.com/XiaoWind/dsh-vault.git
+# 从 GitHub 安装（立即可用，无需发布到 npm）
+dsh plugin --profile web add github:XiaoWind/dsh-vault
 
-# or from npm, once published
-dsh plugin --profile web add dsh-vault
+# 等价写法
+dsh plugin --profile web add git+https://github.com/XiaoWind/dsh-vault.git
 ```
 
-`dsh plugin` forwards to `pnpm` inside the `web` profile directory, then
-reconciles the profile's `dsh.profile.bundles` layer list. Because this package
-declares `dsh.bundle.patch`, it joins the layer stack automatically. Restart the
-Web app after installing.
+`dsh plugin` 会把参数转发给 `web` profile 目录内的 `pnpm`，随后自动把该包加入
+`dsh.profile.bundles` 层级列表（因为本包声明了 `dsh.bundle.patch`）。安装后请
+重启 Web 应用。
 
-> The plugin injects `sessionPersistence`, `workspaceRegistry`, and `commands`,
-> so it activates only in profiles that compose those host services — the
-> shipped `web` profile does.
+> 本插件注入 `sessionPersistence`、`workspaceRegistry` 和 `commands` 服务，因此
+> 只在包含这些 host 服务的 profile 中生效——官方自带的 `web` profile 就包含它们。
 
-## Update
+## 更新
 
-Pull the latest version into an installed profile:
+**桌面版**：在插件管理里重新安装该插件，或先移除再按
+`github:XiaoWind/dsh-vault` 重新添加。pnpm 可能缓存旧的 git 解析结果，移除后重新
+添加最可靠；更新后重启桌面应用。
+
+**CLI / Web 版**：
 
 ```sh
 dsh plugin --profile web update dsh-vault
 ```
 
-`dsh plugin` forwards to `pnpm update dsh-vault`, which re-resolves the
-`github:XiaoWind/dsh-vault` dependency to the latest commit on the default
-branch. The lockfile pins a git dependency by commit hash, so a `version` bump
-is not required for the update to land. If pnpm has cached an old resolution,
-re-pin it explicitly:
+`dsh plugin` 会把参数转发给 profile 目录里的 `pnpm update dsh-vault`，把
+`github:XiaoWind/dsh-vault` 重新解析到默认分支的最新 commit。锁文件按 commit
+钉住 git 依赖，因此不必升级 `version` 也能更新。若 pnpm 因缓存没有拉到新
+commit，可显式重新钉一次：
 
 ```sh
 dsh plugin --profile web add github:XiaoWind/dsh-vault
 ```
 
-Restart the Web app after updating — the bundle layer is composed at boot, so a
-running Web process does not hot-reload an installed plugin.
+更新后请重启应用——bundle 层在启动时组合，运行中的进程不会热更已安装的插件。
 
-## Usage
+## 用法
 
-The vault runs automatically — no setup required. A `/vault` slash command
-provides visibility and manual control:
+保险库全自动运行，无需额外配置。提供了 `/vault` 斜杠命令用于查看和手动控制：
 
-| Command | Result |
+| 命令 | 作用 |
 |---|---|
-| `/vault status` | Show vaulted workspaces and per-workspace session counts. |
-| `/vault restore` | Import vaulted sessions/titles for known workspaces now. |
-| `/vault export` | (Re)write vault files from current persistence now. |
-| `/vault help` | Show help. |
+| `/vault status` | 查看已保险的工作区及每个工作区的会话数量。 |
+| `/vault restore` | 立即为已知工作区导入保险库中的会话/标题。 |
+| `/vault export` | 立即把当前持久化数据（重新）写入保险库文件。 |
+| `/vault help` | 查看帮助。 |
 
-### How it behaves
+### 行为说明
 
-- **Continuous mirroring.** As a session appends events, they are written to
-  the workspace's `dsh-session-vault/sessions/<id>.jsonl` in order. On session
-  disposal the file is rewritten as a clean snapshot.
-- **Automatic restore.** At boot, and whenever a workspace is opened, the
-  plugin imports any vault session missing from DSH persistence and applies the
-  vaulted title. On a brand-new machine, opening the copied folder as a
-  workspace triggers the same restore.
-- **Portable paths.** Session `cwd`s are rebound to the workspace's current
-  absolute path on import, so a folder copied to a different location restores
-  cleanly.
-- **Idempotent.** Sessions already in persistence are never re-imported, and
-  attaching/renaming is a no-op when nothing changed.
+- **持续镜像。** 会话每追加事件，就按顺序写入该工作区的
+  `dsh-session-vault/sessions/<id>.jsonl`；会话销毁时会把文件重写为一份干净快照。
+- **自动恢复。** 启动时、以及每次打开工作区时，插件都会导入 DSH 持久化中缺失
+  的保险库会话，并应用保险库里的标题。在全新电脑上把复制的文件夹作为工作区打开，
+  同样会触发恢复。
+- **路径可移植。** 导入时会把会话的 `cwd` 重新绑定到工作区当前的绝对路径，因此
+  复制到不同位置的文件夹也能干净恢复。
+- **幂等。** 已存在于持久化中的会话不会被重复导入；无需变更时，挂载/重命名不会
+  产生任何写入。
 
-## Configuration
+## 配置
 
-No configuration is required. The plugin inserts with an empty `config`; the
-vault directory name (`dsh-session-vault`) and the JSONL format are fixed so
-vaults stay interchangeable across machines.
+无需配置。插件以空 `config` 插入；保险库目录名（`dsh-session-vault`）和 JSONL
+格式是固定的，以保证不同机器之间的保险库可以互换。
 
-Each vault's `workspace.json` also carries a `kind: "dsh-vault"` marker, so the
-plugin recognizes a vault by its content rather than relying on the directory
-name alone.
+每个保险库的 `workspace.json` 还带有 `kind: "dsh-vault"` 标记，因此插件按内容
+识别保险库，而不只依赖目录名。
 
-## Development
+## 开发
 
 ```sh
-# syntax check
+# 语法检查
 node --check lib/index.js
 node --check lib/vault.js
 ```
 
-The plugin is dependency-free ESM (`lib/index.js` + `lib/vault.js`) with no
-build step. It exports `apply`, `inject`, and `name`, and the bundle layer
-`cordis.patch.yml` inserts it into the profile composition. The JSONL format is
-self-contained and independent of the harness, so `lib/vault.js` can be
-unit-tested directly.
+插件是无第三方依赖的 ESM（`lib/index.js` + `lib/vault.js`），无需构建步骤。它导出
+`apply`、`inject`、`name`，并由 bundle 层 `cordis.patch.yml` 插入到 profile 组合中。
+JSONL 格式是自包含的、独立于 harness，因此 `lib/vault.js` 可直接做单元测试。
 
 ## License
 
