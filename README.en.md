@@ -121,6 +121,10 @@ provides visibility and manual control:
 - **Continuous mirroring.** As a session appends events, they are written to
   the workspace's `dsh-session-vault/sessions/<id>.jsonl` in order. On session
   disposal the file is rewritten as a clean snapshot.
+- **Headers are stored as the host gives them.** A vault record's header carries
+  exactly the fields the running session format uses (format v4 requires
+  `isSeeded` and refuses the long-retired `seedLength`), so the plugin neither
+  drops fields nor invents them as the host format evolves.
 - **Automatic restore.** At boot, and whenever a workspace is opened, the
   plugin imports any vault session missing from DSH persistence and applies the
   vaulted title. On a brand-new machine, opening the copied folder as a
@@ -130,6 +134,20 @@ provides visibility and manual control:
   cleanly.
 - **Idempotent.** Sessions already in persistence are never re-imported, and
   attaching/renaming is a no-op when nothing changed.
+- **Records repair themselves.** The plugin only mirrors events while it is
+  running, so a session that keeps appending while the plugin is unloaded
+  (switching runtimes, reinstalling the plugin) leaves a hole in its record.
+  Re-opening that session makes the plugin compare the file with the full log
+  in memory and fill the file in; session disposal also writes a complete
+  snapshot. `/vault export` force-rewrites every vault file from current
+  persistence, which repairs anything at any time.
+- **An incomplete record is never imported silently.** A durable DSH log must
+  be a contiguous run of `seq` values starting at 0, so a vault record missing
+  its head (or with an internal hole) cannot be replayed faithfully. The plugin
+  skips such a record and says why in the log (for example
+  `its log starts at seq 6`) instead of importing a truncated session that
+  looks complete. To repair it, run `/vault export` for that workspace on the
+  origin machine, then copy the folder again.
 
 ## Configuration
 
