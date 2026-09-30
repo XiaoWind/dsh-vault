@@ -1,7 +1,7 @@
 {
   "name": "dsh-vault",
   "description": "DeepSeek Harness plugin: persist every conversation and log inside the workspace folder so copying that folder to a new machine restores all sessions (including the workspace name)",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "license": "MIT",
   "type": "module",
   "main": "lib/index.js",
