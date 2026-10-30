@@ -154,13 +154,21 @@ provides visibility and manual control:
   artifact's size), the boot export rewrites the whole record from persistence.
   Records wiped by that regression come back on the next start without manual
   intervention.
-- **An incomplete record is never imported silently.** A durable DSH log must
-  be a contiguous run of `seq` values starting at 0, so a vault record missing
-  its head (or with an internal hole) cannot be replayed faithfully. The plugin
-  skips such a record and says why in the log (for example
-  `its log starts at seq 6`) instead of importing a truncated session that
-  looks complete. To repair it, run `/vault export` for that workspace on the
-  origin machine, then copy the folder again.
+- **An incomplete record recovers what it can.** A durable DSH log must be a
+  contiguous run of `seq` values starting at 0.
+  - **Missing head** (the record starts at `seq 6`): the events before it have no
+    source, and renumbering a later event as 0 would rewrite history, so the
+    whole record is skipped with the reason in the log
+    (`its log starts at seq 6`).
+  - **Hole after an intact head**: the plugin imports the contiguous **prefix**
+    before the hole and lets the session end there — the same shape a crashed
+    session has — while logging how many later events are unreachable
+    (`restoring session "…" up to seq 1078: 2 later event(s) are unreachable
+    because its log has a hole`). One lost event no longer costs the whole
+    conversation.
+  - For a complete record, run `/vault export` on the origin machine (rewrites
+    from persistence), or reopen the session so the plugin repairs it, then copy
+    the folder again.
 
 ## Configuration
 
