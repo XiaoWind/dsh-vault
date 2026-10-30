@@ -169,6 +169,20 @@ provides visibility and manual control:
   - For a complete record, run `/vault export` on the origin machine (rewrites
     from persistence), or reopen the session so the plugin repairs it, then copy
     the folder again.
+- **Missing image attachments are marked offloaded.** The vault mirrors session
+  logs, **not attachment bytes** (images are content addressed under
+  `<DSH_HOME>/attachments/v1/objects/`). A conversation copied to another machine
+  keeps its image references but not their bytes, and the host resolves every
+  referenced image before it builds a request — so a missing object fails *every*
+  turn with the unrelated `DeepSeek Messages transport failed`. On session entry
+  the plugin detects the gap and appends one `image/offload` event, DSH's own way
+  to represent an image that cannot be sent, which the projection turns into text.
+  The conversation becomes usable again; only those images are gone. Reopen the
+  session (or restart the app) to trigger the repair.
+
+  > Known boundary: **images and attachments do not travel with the vault.** Copy
+  > `<DSH_HOME>/attachments/v1` alongside the workspace folder when they must be
+  > preserved.
 
 ## Configuration
 
