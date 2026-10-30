@@ -141,6 +141,19 @@ provides visibility and manual control:
   in memory and fill the file in; session disposal also writes a complete
   snapshot. `/vault export` force-rewrites every vault file from current
   persistence, which repairs anything at any time.
+- **A record is only ever extended, never shortened.** The plugin rewrites a
+  record only when it can read the session's complete log; when no log is
+  readable it merely creates a missing header and leaves the record alone. Any
+  rewrite that would drop events the record already holds (its last `seq` is
+  ahead of the log's) is refused with a warning. DSH 0.2.1 replaced the
+  `session.events` getter with `snapshotEvents()`, and the previous reading of a
+  missing accessor as "no events" wrote header-only records; both shapes are
+  supported now.
+- **Empty shells repair themselves.** When a record holds only a header while
+  DSH persistence still holds that session's content (judged by the stored
+  artifact's size), the boot export rewrites the whole record from persistence.
+  Records wiped by that regression come back on the next start without manual
+  intervention.
 - **An incomplete record is never imported silently.** A durable DSH log must
   be a contiguous run of `seq` values starting at 0, so a vault record missing
   its head (or with an internal hole) cannot be replayed faithfully. The plugin
