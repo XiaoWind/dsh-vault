@@ -139,6 +139,20 @@ dsh plugin --profile web add github:XiaoWind/dsh-vault
     because its log has a hole`）。这样丢一条事件不会毁掉整段对话。
   - 想要完整记录，请在源机器上执行 `/vault export`（按持久化重写），或把会话再打开
     一次让插件补全，然后再复制。
+- **持久化里"已存在"但更短的会话会被检查。** 恢复只导入"持久化里没有"的会话，但
+  *已存在不等于完整*：同一段对话在另一台机器上继续过（工作区文件夹通过 Syncthing /
+  OneDrive 等同步，保险库记录被同步过来，而会话存储 `~/.dsh/sessions` 是每台机器各自
+  的），或者日志被崩溃截断，都会留下一个很短的会话把保险库内容永久挡住。插件会在
+  启动和 `/vault restore` 时比较两者：
+  - **存储里的日志是记录的真前缀**：把记录多出来的连续事件**追加**进去，会话直接恢复
+    完整（会写入 `info` 日志说明补了多少条）。
+  - **已经分叉**（后面的事件对不上，例如中间插入了新的"恢复"标记或别的命令）：**不拼**，
+    因为把旧历史接在新事件之后会伪造出从未发生过的顺序。此时只记录一条明确警告并给出
+    处理办法：`session "…" holds 49 of 1587 vaulted event(s) but diverged at seq 40, so
+    it cannot be extended; delete this session in DSH and run /vault restore to rebuild it
+    from the vault`，`/vault restore` 的回复里也会说明需要重建几个会话。
+  - 为了不拖慢启动，启动时的比较以"存储产物远小于记录"为门槛（约 8 倍）；`/vault
+    restore` 会强制逐个比较。
 - **缺失的图片附件会被标记为"已卸载"。** 保险库镜像的是会话日志，**不含附件二进制**
   （图片按内容寻址存放在 `<DSH_HOME>/attachments/v1/objects/`）。会话被复制到另一台
   机器后，日志里的图片引用仍在、字节却不在，而宿主会在发请求前逐个读取这些图片——

@@ -169,6 +169,27 @@ provides visibility and manual control:
   - For a complete record, run `/vault export` on the origin machine (rewrites
     from persistence), or reopen the session so the plugin repairs it, then copy
     the folder again.
+- **A stored session that exists but is shorter is checked.** Restore only imports
+  sessions persistence is *missing*, and "exists" is not "is complete": a
+  conversation continued on another machine (the workspace folder syncs through
+  Syncthing/OneDrive, so the vault record arrives, while `~/.dsh/sessions` stays
+  machine-local) or a log cut short by a crash leaves a short session that
+  shadows the vault forever. At boot and on `/vault restore` the plugin compares
+  the two:
+  - **The stored log is a true prefix of the record**: the record's remaining
+    contiguous events are **appended**, so the conversation becomes complete
+    again (an `info` line reports how many events were added).
+  - **The stored log diverged** (a later event disagrees — a resume marker or
+    another command sits where the record has conversation): nothing is merged,
+    because appending old history after newer events would fabricate an order
+    that never happened. A warning names the session, both sizes and the remedy —
+    `session "…" holds 49 of 1587 vaulted event(s) but diverged at seq 40, so it
+    cannot be extended; delete this session in DSH and run /vault restore to
+    rebuild it from the vault` — and `/vault restore` reports how many sessions
+    need rebuilding.
+  - So the boot pass stays cheap, the comparison is gated on the stored artifact
+    being far smaller than the record (about 8×); `/vault restore` compares every
+    session regardless.
 - **Missing image attachments are marked offloaded.** The vault mirrors session
   logs, **not attachment bytes** (images are content addressed under
   `<DSH_HOME>/attachments/v1/objects/`). A conversation copied to another machine
