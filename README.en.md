@@ -214,6 +214,15 @@ provides visibility and manual control:
   > Known boundary: **images and attachments do not travel with the vault.** Copy
   > `<DSH_HOME>/attachments/v1` alongside the workspace folder when they must be
   > preserved.
+- **Image attachments are recovered from identical workspace files first.** An
+  attachment id is the sha256 of the image bytes, so any file in the workspace with
+  exactly those bytes *is* that image — the path and file name are irrelevant. When
+  restoring or opening a session the plugin scans the workspace for images (depth 6,
+  at most 4000 files, size-filtered before hashing) and copies a digest match back
+  into the attachment store, recovering it exactly; only images with no identical
+  bytes anywhere are marked offloaded. So dropping the image files into the
+  workspace — any subdirectory, any name — and reopening the session brings the
+  pictures back.
 
 ## Configuration
 
