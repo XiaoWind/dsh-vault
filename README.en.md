@@ -134,6 +134,12 @@ provides visibility and manual control:
   cleanly.
 - **Idempotent.** Sessions already in persistence are never re-imported, and
   attaching/renaming is a no-op when nothing changed.
+- **A restored session is never left archived.** Archiving is registry-global: it
+  hides a session from every list while keeping its workspace slot. The plugin
+  lifts an imported session out of the archive set, and an explicit
+  `/vault restore` also lifts vaulted sessions that already exist — otherwise a
+  successful restore looks exactly like nothing happening. The boot pass only
+  touches sessions it imports, so a deliberate archive is never silently undone.
 - **Records repair themselves.** The plugin only mirrors events while it is
   running, so a session that keeps appending while the plugin is unloaded
   (switching runtimes, reinstalling the plugin) leaves a hole in its record.
