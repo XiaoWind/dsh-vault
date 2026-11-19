@@ -143,12 +143,16 @@ provides visibility and manual control:
   persistence, which repairs anything at any time.
 - **A record is only ever extended, never shortened.** The plugin rewrites a
   record only when it can read the session's complete log; when no log is
-  readable it merely creates a missing header and leaves the record alone. Any
-  rewrite that would drop events the record already holds (its last `seq` is
-  ahead of the log's) is refused with a warning. DSH 0.2.1 replaced the
-  `session.events` getter with `snapshotEvents()`, and the previous reading of a
-  missing accessor as "no events" wrote header-only records; both shapes are
-  supported now.
+  readable it merely creates a missing header and leaves the record alone. Every
+  rewrite — **including `/vault export`** — first checks that the new log covers
+  the record's **highest** `seq`, not just its last line: a log can end with a
+  line from an older generation or a sync merge, and judging by the last line
+  alone misreads the record's length (that is how 0.1.8 replaced a 1587-event
+  record with 52 events on 2026-11-19). When a shrink is possible and the record
+  is larger than what would replace it, the plugin scans the record for its true
+  maximum `seq` and refuses the write with a warning if the new log stops short.
+  To deliberately accept a shorter persisted log, delete that `<id>.jsonl`
+  first, then run `/vault export` to rebuild it.
 - **Empty shells repair themselves.** When a record holds only a header while
   DSH persistence still holds that session's content (judged by the stored
   artifact's size), the boot export rewrites the whole record from persistence.
