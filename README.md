@@ -37,29 +37,29 @@ my-project/
 在桌面版的**插件管理**里添加插件时，填 GitHub 规格（注意不是包名）：
 
 ```
-github:XiaoWind/dsh-vault
+github:XiaoWind/dsh-vault#<40 位 commit sha>
 ```
 
-桌面版会在 profile 目录里执行 `pnpm add github:XiaoWind/dsh-vault`，从 GitHub
-拉取默认分支的最新 commit，校验通过后把本包加入 `dsh.profile.bundles`。
-**安装后按提示重启桌面应用**才会生效。
+**请钉住完整 40 位 commit。** DSH 插件管理器只对来源固定到完整 commit 的 git
+插件报告 `update: 'git'`，并允许它热更新；这也是本插件运行时自动更新的前提
+（见下文「自动更新」）。不带 `#<sha>` 也能安装，但自动更新会保持关闭。
+
+桌面版会在 profile 目录里执行 `pnpm add`，并用本包 `engines.dsh`
+（`>=0.2.2-rc.5 <0.3.0`）校验当前 DSH 版本；不兼容时拒绝安装并回滚
+`package.json`、`pnpm-lock.yaml` 和 `node_modules`。校验通过后把本包加入
+`dsh.profile.bundles`。**安装后按提示重启桌面应用**才会生效。
 
 > **必须使用 `github:owner/repo` 这种规格。** 本插件没有发布到 npm registry，
 > 只写 `dsh-vault` 会去 npm 上查找，安装会失败。
 
-> 桌面版在安装时会逐条校验本插件 `peerDependencies` 里的 `@deepseek-ai/dsh-*`
-> 范围是否接受当前运行时版本（即 `dsh-app-boot` 的版本，例如 `0.2.0-rc.2`）。
-> 不兼容时会拒绝安装，并回滚 `package.json`、`pnpm-lock.yaml` 和
-> `node_modules`；遇到这种情况请更新到最新版插件。
-
 ### CLI / Web 版
 
 ```sh
-# 从 GitHub 安装（立即可用，无需发布到 npm）
-dsh plugin --profile web add github:XiaoWind/dsh-vault
+# 从 GitHub 安装，并钉住完整 commit（自动更新的前提）
+dsh plugin --profile web add "github:XiaoWind/dsh-vault#<40 位 commit sha>"
 
-# 等价写法
-dsh plugin --profile web add git+https://github.com/XiaoWind/dsh-vault.git
+# 也可以只用默认分支安装（自动更新保持关闭）
+dsh plugin --profile web add github:XiaoWind/dsh-vault
 ```
 
 `dsh plugin` 会把参数转发给 `web` profile 目录内的 `pnpm`，随后自动把该包加入
@@ -69,25 +69,49 @@ dsh plugin --profile web add git+https://github.com/XiaoWind/dsh-vault.git
 > 本插件注入 `sessionPersistence`、`workspaceRegistry` 和 `commands` 服务，因此
 > 只在包含这些 host 服务的 profile 中生效——官方自带的 `web` profile 就包含它们。
 
-## 更新
+## 自动更新
 
-**桌面版**：在插件管理里重新安装该插件，或先移除再按
-`github:XiaoWind/dsh-vault` 重新添加。pnpm 可能缓存旧的 git 解析结果，移除后重新
-添加最可靠；更新后重启桌面应用。
+插件自带运行时自动更新，不需要外部脚本：
+
+1. 启动约 90 秒后检查一次 GitHub 上 `XiaoWind/dsh-vault` 的最新 commit，之后每
+   6 小时检查一次；
+2. 读取该 commit 的 `package.json`，仅当 `version` 比运行中的版本新时才更新；
+3. 通过 DSH 插件管理器把安装整体热更新到该 commit（固定到 40 位 sha 的 git
+   规格）。桌面版 profile 启用 HMR，插件会被移除并以新版本重新加载，无需重启；
+4. 成功或失败都会以会话通知的形式报告；失败不会改变正在运行的版本，下一轮检查
+   会重试。
+
+**前提**：本插件必须以固定 40 位 commit 的规格安装（见「安装」）。未固定的安装
+不会自动更新；`/vault update` 会提示重新安装的方式。
+
+自动更新只替换插件代码，**不会改动任何保险库文件**；更新前后 `dsh-session-vault/`
+里的记录保持原样。
+
+可在 profile 的 `cordis.patch.yml` 中调整：
+
+```yaml
+- id: vault
+  config:
+    autoUpdate: true                 # false 关闭自动检查
+    updateCheckIntervalMs: 21600000  # 两次检查间隔（默认 6 小时）
+    updateInitialDelayMs: 90000      # 启动后首次检查延迟（默认 90 秒）
+```
+
+设置环境变量 `DSH_PLUGIN_AUTO_UPDATE=0` 可全局关闭自动更新。检查走
+`api.github.com` 与 `raw.githubusercontent.com`；若遇到未认证请求限流，可在环境
+中设置 `GITHUB_TOKEN`。手动触发一次检查：`/vault update`。
+
+### 手动更新（不使用自动更新时）
+
+**桌面版**：在插件管理里移除本插件，再按固定 commit 的规格重新添加；更新后重启
+桌面应用。
 
 **CLI / Web 版**：
 
 ```sh
 dsh plugin --profile web update dsh-vault
-```
-
-`dsh plugin` 会把参数转发给 profile 目录里的 `pnpm update dsh-vault`，把
-`github:XiaoWind/dsh-vault` 重新解析到默认分支的最新 commit。锁文件按 commit
-钉住 git 依赖，因此不必升级 `version` 也能更新。若 pnpm 因缓存没有拉到新
-commit，可显式重新钉一次：
-
-```sh
-dsh plugin --profile web add github:XiaoWind/dsh-vault
+# 或显式钉到新 commit
+dsh plugin --profile web add "github:XiaoWind/dsh-vault#<新 commit sha>"
 ```
 
 更新后请重启应用——bundle 层在启动时组合，运行中的进程不会热更已安装的插件。
@@ -101,6 +125,7 @@ dsh plugin --profile web add github:XiaoWind/dsh-vault
 | `/vault status` | 查看已保险的工作区及每个工作区的会话数量。 |
 | `/vault restore` | 立即为已知工作区导入保险库中的会话/标题。 |
 | `/vault export` | 立即把当前持久化数据（重新）写入保险库文件。 |
+| `/vault update` | 立即检查一次插件更新。 |
 | `/vault help` | 查看帮助。 |
 
 ### 行为说明
@@ -180,8 +205,10 @@ dsh plugin --profile web add github:XiaoWind/dsh-vault
 
 ## 配置
 
-无需配置。插件以空 `config` 插入；保险库目录名（`dsh-session-vault`）和 JSONL
-格式是固定的，以保证不同机器之间的保险库可以互换。
+保险库本身无需配置：插件以空 `config` 插入；保险库目录名（`dsh-session-vault`）
+和 JSONL 格式是固定的，以保证不同机器之间的保险库可以互换。仅自动更新有三个可选
+配置项（见「自动更新」）：`autoUpdate`、`updateCheckIntervalMs`、
+`updateInitialDelayMs`。
 
 每个保险库的 `workspace.json` 还带有 `kind: "dsh-vault"` 标记，因此插件按内容
 识别保险库，而不只依赖目录名。
@@ -192,11 +219,13 @@ dsh plugin --profile web add github:XiaoWind/dsh-vault
 # 语法检查
 node --check lib/index.js
 node --check lib/vault.js
+node --check lib/self-update.js
 ```
 
-插件是无第三方依赖的 ESM（`lib/index.js` + `lib/vault.js`），无需构建步骤。它导出
-`apply`、`inject`、`name`，并由 bundle 层 `cordis.patch.yml` 插入到 profile 组合中。
-JSONL 格式是自包含的、独立于 harness，因此 `lib/vault.js` 可直接做单元测试。
+插件是无第三方依赖的 ESM（`lib/index.js` + `lib/vault.js` + `lib/self-update.js`），
+无需构建步骤；DSH 宿主包作为 peer 依赖。它导出 `apply`、`inject`、`name`，并由
+bundle 层 `cordis.patch.yml` 插入到 profile 组合中。JSONL 格式是自包含的、独立于
+harness，因此 `lib/vault.js` 可直接做单元测试。
 
 ## License
 

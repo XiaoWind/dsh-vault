@@ -41,32 +41,32 @@ Add the plugin in the desktop app's plugin manager using a GitHub spec — not t
 package name:
 
 ```
-github:XiaoWind/dsh-vault
+github:XiaoWind/dsh-vault#<40-char commit sha>
 ```
 
-The desktop app runs `pnpm add github:XiaoWind/dsh-vault` in its profile
-directory, resolves the latest commit on the default branch, and adds the
-package to `dsh.profile.bundles` once compatibility passes. **Restart the
-desktop app when prompted** for the plugin to take effect.
+**Pin the full 40-character commit.** DSH's plugin manager only reports
+`update: 'git'` (and allows a hot update) for a git source pinned to a full
+commit; that pin is also what the runtime auto-update below needs. A plain
+`github:XiaoWind/dsh-vault` spec still installs, but auto-update stays off.
+
+The desktop app runs `pnpm add` in its profile directory, checks this package's
+`engines.dsh` (`>=0.2.2-rc.5 <0.3.0`) against the running DSH version, and adds
+the package to `dsh.profile.bundles` once it passes. An incompatible plugin is
+refused and `package.json`, `pnpm-lock.yaml`, and `node_modules` are rolled
+back. **Restart the desktop app when prompted** for the plugin to take effect.
 
 > **The `github:owner/repo` spec is required.** This plugin is not published to
 > the npm registry, so a bare `dsh-vault` would be looked up on npm and the
 > installation would fail.
 
-> Before installing, the desktop runtime checks every `@deepseek-ai/dsh-*` peer
-> range against the running version (the `dsh-app-boot` version, for example
-> `0.2.0-rc.2`). An incompatible plugin is refused and `package.json`,
-> `pnpm-lock.yaml`, and `node_modules` are rolled back — update the plugin in
-> that case.
-
 ### CLI / Web
 
 ```sh
-# from GitHub (works immediately — no npm publish required)
-dsh plugin --profile web add github:XiaoWind/dsh-vault
+# from GitHub, pinned to a full commit (required for auto-update)
+dsh plugin --profile web add "github:XiaoWind/dsh-vault#<40-char commit sha>"
 
-# equivalent form
-dsh plugin --profile web add git+https://github.com/XiaoWind/dsh-vault.git
+# or install from the default branch (auto-update stays off)
+dsh plugin --profile web add github:XiaoWind/dsh-vault
 ```
 
 `dsh plugin` forwards to `pnpm` inside the `web` profile directory, then
@@ -78,31 +78,57 @@ Web app after installing.
 > so it activates only in profiles that compose those host services — the
 > shipped `web` profile does.
 
-## Update
+## Auto-update
 
-**Desktop**: reinstall the plugin from the plugin manager, or remove it and add
-`github:XiaoWind/dsh-vault` again. pnpm may have cached an old git resolution,
-so removing and re-adding is the most reliable path. Restart the desktop app
-afterwards.
+The plugin updates itself at runtime, no external script required:
+
+1. About 90 seconds after start — then every 6 hours — it checks the latest
+   commit on GitHub for `XiaoWind/dsh-vault`;
+2. it reads that commit's `package.json` and only updates when `version` is
+   newer than the running one;
+3. it hot-updates the installed plugin to that commit through the DSH plugin
+   manager (a git spec pinned to the 40-char sha). Profiles with HMR enabled —
+   including the desktop app — remove and reload the plugin in place, no restart
+   needed;
+4. success or failure is reported as a session notice; a failure leaves the
+   running version untouched and the next check retries.
+
+**Prerequisite**: the plugin must be installed with a full-commit spec (see
+Install). A non-pinned install never auto-updates; `/vault update` tells you how
+to reinstall.
+
+An update only replaces plugin code — it **never touches vault files**; records
+under `dsh-session-vault/` stay exactly as they are.
+
+Tune it in the profile's `cordis.patch.yml`:
+
+```yaml
+- id: vault
+  config:
+    autoUpdate: true                 # false disables the checks
+    updateCheckIntervalMs: 21600000  # between checks (default 6 hours)
+    updateInitialDelayMs: 90000      # first check (default 90 seconds)
+```
+
+Set `DSH_PLUGIN_AUTO_UPDATE=0` to disable auto-update for all plugins. Checks
+use `api.github.com` and `raw.githubusercontent.com`; set `GITHUB_TOKEN` if you
+hit unauthenticated rate limits. Trigger a check manually with `/vault update`.
+
+### Manual update (when auto-update is off)
+
+**Desktop**: remove the plugin in the plugin manager and add it again with a
+pinned spec; restart the app afterwards.
 
 **CLI / Web**:
 
 ```sh
 dsh plugin --profile web update dsh-vault
-```
-
-`dsh plugin` forwards to `pnpm update dsh-vault`, which re-resolves the
-`github:XiaoWind/dsh-vault` dependency to the latest commit on the default
-branch. The lockfile pins a git dependency by commit hash, so a `version` bump
-is not required for the update to land. If pnpm has cached an old resolution,
-re-pin it explicitly:
-
-```sh
-dsh plugin --profile web add github:XiaoWind/dsh-vault
+# or pin a specific commit explicitly
+dsh plugin --profile web add "github:XiaoWind/dsh-vault#<new commit sha>"
 ```
 
 Restart the app after updating — the bundle layer is composed at boot, so a
-running process does not hot-reload an installed plugin.
+running process does not hot-reload an installed plugin unless HMR is enabled.
 
 ## Usage
 
@@ -114,6 +140,7 @@ provides visibility and manual control:
 | `/vault status` | Show vaulted workspaces and per-workspace session counts. |
 | `/vault restore` | Import vaulted sessions/titles for known workspaces now. |
 | `/vault export` | (Re)write vault files from current persistence now. |
+| `/vault update` | Check for a plugin update now. |
 | `/vault help` | Show help. |
 
 ### How it behaves
@@ -226,9 +253,11 @@ provides visibility and manual control:
 
 ## Configuration
 
-No configuration is required. The plugin inserts with an empty `config`; the
-vault directory name (`dsh-session-vault`) and the JSONL format are fixed so
-vaults stay interchangeable across machines.
+The vault itself needs no configuration: the plugin inserts with an empty
+`config`, and the vault directory name (`dsh-session-vault`) and the JSONL
+format are fixed so vaults stay interchangeable across machines. Only auto-update
+has three optional keys (see Auto-update): `autoUpdate`,
+`updateCheckIntervalMs`, `updateInitialDelayMs`.
 
 Each vault's `workspace.json` also carries a `kind: "dsh-vault"` marker, so the
 plugin recognizes a vault by its content rather than relying on the directory
@@ -240,13 +269,15 @@ name alone.
 # syntax check
 node --check lib/index.js
 node --check lib/vault.js
+node --check lib/self-update.js
 ```
 
-The plugin is dependency-free ESM (`lib/index.js` + `lib/vault.js`) with no
-build step. It exports `apply`, `inject`, and `name`, and the bundle layer
-`cordis.patch.yml` inserts it into the profile composition. The JSONL format is
-self-contained and independent of the harness, so `lib/vault.js` can be
-unit-tested directly.
+The plugin is ESM with no third-party dependencies (`lib/index.js` +
+`lib/vault.js` + `lib/self-update.js`) and no build step; DSH host packages are
+peer dependencies. It exports `apply`, `inject`, and `name`, and the bundle
+layer `cordis.patch.yml` inserts it into the profile composition. The JSONL
+format is self-contained and independent of the harness, so `lib/vault.js` can
+be unit-tested directly.
 
 ## License
 

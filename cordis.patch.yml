@@ -10,7 +10,15 @@
 # The plugin injects `sessionPersistence`, `workspaceRegistry`, and `commands`,
 # so it activates only in profiles that compose those host services (the
 # shipped `web` profile does).
+# Plugin config keys:
+#   autoUpdate: check GitHub for a newer dsh-vault and hot-update it
+#   updateCheckIntervalMs: six hours between checks
+#   updateInitialDelayMs: first check 90s after start
+# Auto-update needs a commit-pinned install; see README.
 - insert:
     - id: vault
       name: dsh-vault
-      config: {}
+      config:
+        autoUpdate: true
+        updateCheckIntervalMs: 21600000
+        updateInitialDelayMs: 90000
