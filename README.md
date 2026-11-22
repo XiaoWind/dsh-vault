@@ -37,8 +37,13 @@ my-project/
 在桌面版的**插件管理**里添加插件时，填 GitHub 规格（注意不是包名）：
 
 ```
-github:XiaoWind/dsh-vault#<40 位 commit sha>
+github:XiaoWind/dsh-vault#07cca04ee99215d45f0c4a3d8ea70c88611a77a9
 ```
+
+`#` 后面是**真实的** 40 位 commit 哈希（上面这条就是本仓库 0.2.10 发布提交的真实
+值），不是占位符，也不用自己编。要装哪次提交，就在 GitHub 仓库的 Commits 页面点开
+它、复制完整的 40 位 sha；本地克隆里执行 `git rev-parse HEAD` 也能拿到当前提交的
+sha。
 
 **请钉住完整 40 位 commit。** DSH 插件管理器只对来源固定到完整 commit 的 git
 插件报告 `update: 'git'`，并允许它热更新；这也是本插件运行时自动更新的前提
@@ -56,7 +61,7 @@ github:XiaoWind/dsh-vault#<40 位 commit sha>
 
 ```sh
 # 从 GitHub 安装，并钉住完整 commit（自动更新的前提）
-dsh plugin --profile web add "github:XiaoWind/dsh-vault#<40 位 commit sha>"
+dsh plugin --profile web add "github:XiaoWind/dsh-vault#07cca04ee99215d45f0c4a3d8ea70c88611a77a9"
 
 # 也可以只用默认分支安装（自动更新保持关闭）
 dsh plugin --profile web add github:XiaoWind/dsh-vault
